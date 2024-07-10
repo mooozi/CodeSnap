@@ -59,13 +59,12 @@ const createPanel = async (context) => {
   return panel;
 };
 
-let lastUsedImageUri = vscode.Uri.file(path.resolve(homedir(), 'Desktop/code.png'));
-const saveImage = async (data) => {
+const saveImage = async (data, imageUri) => {
   const uri = await vscode.window.showSaveDialog({
     filters: { Images: ['png'] },
-    defaultUri: lastUsedImageUri
+    defaultUri: imageUri
   });
-  lastUsedImageUri = uri;
+
   uri && writeFile(uri.fsPath, Buffer.from(data, 'base64'));
 };
 
@@ -74,8 +73,11 @@ const hasOneSelection = (selections) =>
 
 const runCommand = async (context) => {
   const panel = await createPanel(context);
+  let editor = vscode.window.activeTextEditor;
 
   const update = async () => {
+    editor = vscode.window.activeTextEditor;
+
     await vscode.commands.executeCommand('editor.action.clipboardCopyWithSyntaxHighlightingAction');
     panel.webview.postMessage({ type: 'update', ...getConfig() });
   };
@@ -83,11 +85,14 @@ const runCommand = async (context) => {
   const flash = () => panel.webview.postMessage({ type: 'flash' });
 
   panel.webview.onDidReceiveMessage(async ({ type, data }) => {
+    const activeFileName = editor ? editor.document.uri.path.split('/').pop() : 'code';
+    const imageUri = vscode.Uri.file(path.resolve(homedir(), `Desktop/${activeFileName}.png`));
+
     if (type === 'save') {
       flash();
-      await saveImage(data);
+      await saveImage(data, imageUri);
     } else {
-      vscode.window.showErrorMessage(`CodeSnap 📸: Unknown shutterAction "${type}"`);
+      vscode.window.showErrorMessage(`CodeSnap: Unknown shutterAction "${type}"`);
     }
   });
 
@@ -96,7 +101,6 @@ const runCommand = async (context) => {
   );
   panel.onDidDispose(() => selectionHandler.dispose());
 
-  const editor = vscode.window.activeTextEditor;
   if (editor && hasOneSelection(editor.selections)) update();
 };
 
