@@ -39,7 +39,7 @@ body {
   overflow: hidden;
   resize: horizontal;
   width: max-content;
-  min-width: 100px;
+  min-width: 800px;
   padding: 18px;
   background-color: var(--vscode-editor-background);
 }
